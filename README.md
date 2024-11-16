@@ -10,13 +10,20 @@ Hiro, we are hiring! 하이로는 채용담당관의 요구사항을 기반으�
 분석한 정보를 기반으로 채용담당관이 물을만한 면접 질문들을 생성해주는 기능과 채용담당관의 요구사항에 맞는 이력서들을 추천해주는 기능을 가지고 있습니다.
 
 ## 💻 애플리케이션 소개
-목적: 이력서에서 필요한 정보들을 저장 및 추출합니다.
+목적: 이력서에서 필요한 정보들을 저장 및 추출합니다.  
 주요 기능:
 - 이력서 업로드 시 LLM 기반 정형화 데이터 추출(이름, 경력, 언어, 기술스택 등)
 - 이력서 기반 채용 담당관이 물을만한 질문(직군별, 컬쳐핏, 경험, 프로젝트 질문) 생성
 - 채용 담당관의 요구사항(프롬프트)에 맞는 이력서들을 추천
 
+## 발표 자료
+[발표 자료](https://docs.google.com/presentation/d/1YEJUHT7qd9TRm_0dpPf1YWuKhcvVdodfl4fss5eO22M/edit?usp=sharing)
+
+
 ## 시연 영상
+
+<video src="videos/hiro 시연영상.mp4" controls="controls" style="max-width: 730px;">
+</video>
 
 ## API Specification
 - [AI 명세](./docs/ai.md)
@@ -65,8 +72,6 @@ See our [CODEOWNERS](./.github/CODEOWNERS) file.
 
 
 
-
-## 발표 자료
 
 
 ## 📝 License
