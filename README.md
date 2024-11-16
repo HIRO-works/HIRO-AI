@@ -21,9 +21,7 @@ Hiro, we are hiring! 하이로는 채용담당관의 요구사항을 기반으�
 
 
 ## 시연 영상
-
-<video src="docs/video/Hiro 시연영상.mp4" controls="controls" style="max-width: 730px;">
-</video>
+![시연영상](docs/video/시연영상.gif)
 
 ## API Specification
 - [AI 명세](./docs/ai.md)
