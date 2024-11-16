@@ -5,6 +5,7 @@ from langchain.prompts import ChatPromptTemplate
 from schemas.response import ResumeFilter
 from langchain.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
+from schemas.enums import JobCategory, YearsOfExperience, ProgrammingLanguage
 
 load_dotenv()
 
@@ -31,17 +32,29 @@ def chat_resumes_retrieval(req: ResumeRecommendRequest):
             ),
             "job_category": (
                 f"{getattr(filter, 'job_category', None)}"
-                if getattr(filter, "job_category", None) is not None
+                if (getattr(filter, "job_category", None) is not None)
+                or (
+                    getattr(filter, "job_category", None)
+                    in [job.value for job in JobCategory]
+                )
                 else None
             ),
             "years": (
                 f"{getattr(filter, 'years', None)}"
-                if getattr(filter, "years", None) is not None
+                if (getattr(filter, "years", None) is not None)
+                or (
+                    getattr(filter, "years", None)
+                    in [experience.value for experience in YearsOfExperience]
+                )
                 else None
             ),
             "language": (
                 f"{getattr(filter, 'language', None)}"
-                if getattr(filter, "language", None) is not None
+                if (getattr(filter, "language", None) is not None)
+                or (
+                    getattr(filter, "language", None)
+                    in [language.value for language in ProgrammingLanguage]
+                )
                 else None
             ),
         }.items()
