@@ -1,12 +1,14 @@
 from langchain.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from langchain.schema.runnable import RunnableParallel
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from dotenv import load_dotenv
 from llm.log_callback_handler import LogCallbackHandler
 from langchain.prompts import ChatPromptTemplate
-from preprocess import PDFLoader
+from preprocess.load_pdf import PDFLoader
 from schemas.response import ResumeInfoResponse
 from langchain.schema import Document
+from abc import ABC, abstractmethod
 
 load_dotenv()
 
@@ -31,6 +33,36 @@ summarize_llm = ChatOpenAI(
         LogCallbackHandler("summarize resume"),
     ],
 )
+
+section_llm = ChatOpenAI(
+    temperature=0.1,
+    model="gpt-4o-mini",
+    callbacks=[
+        LogCallbackHandler("section resume"),
+    ],
+)
+
+section_prompt = ChatPromptTemplate.from_messages([
+    (
+            "system",
+            "너는 이력서 전문가야. 이력서에서 주요 정보를 이 항목에 따라 정보를 찾아줘\n",
+        ),
+    (
+        "system",
+        """항목:  
+        인적사항: 이름, 성별, 생년월일, 주소, 연락처, 이메일
+        학력: list[학교, 전공, 학점, 졸업일자]
+        경력: list[회사명, 직무, 근무기간, 근무내용]
+        자격증: list[자격증명, 취득일자, 취득기관]
+        교육: list[교육기관, 교육내용, 교육기간]
+        프로젝트: list[프로젝트명, 프로젝트 기간, 프로젝트 내용, 프로젝트 역할]
+        자기소개서: 자기소개서 내용"""
+    ),
+    (
+            "human",
+            "Resume:\n{question}\n",
+        ),
+])
 
 refine_prompt = ChatPromptTemplate.from_messages(
     [
@@ -64,6 +96,55 @@ refine_llm = ChatOpenAI(
 )
 
 refine_llm_with_schema = refine_llm.with_structured_output(ResumeInfoResponse)
+
+
+
+
+def split_content(content: str)->list[str]:
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500, 
+        chunk_overlap=50,
+        separators=["\n\n", "\n", ".", "!", "?", ",", " ", "\n\n\n"]
+        )
+    return text_splitter.split_text(content)
+
+
+section_chain = (
+            RunnableParallel(
+                question=(section_prompt | section_llm | (lambda x: x.content))
+            )
+            | RunnableParallel(
+                resume_info=refine_prompt | refine_llm_with_schema,
+                summary=lambda x: x["question"],
+            )
+        )
+
+split_chain = (
+            RunnableParallel(
+                resume_info=refine_prompt | refine_llm_with_schema,
+                summary=lambda x: split_content(x),  
+            )
+        )
+
+summarize_chain = (
+            RunnableParallel(
+                question=(summarize_prompt | summarize_llm | (lambda x: x.content))
+            )
+            | RunnableParallel(
+                resume_info=refine_prompt | refine_llm_with_schema,
+                summary=lambda x: x["question"],
+            )
+        )
+
+class ContentExtractor:
+    def __init__(self, chain):
+        self.chain = chain
+
+    def extract_content(self, documents: list[Document]):
+        resume = ''
+        for doc in documents:
+            resume += doc.page_content
+        return self.chain.invoke(resume)
 
 
 def pdf_to_documents(documents: list[Document]):

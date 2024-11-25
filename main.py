@@ -4,9 +4,10 @@ from uuid import UUID
 from llm.model import llm
 from llm.vector_store import VectorStoreManager
 from llm.generate_question import generate_question
-from llm.extract import pdf_to_documents
+from llm.extract import ContentExtractor, section_chain, split_chain, summarize_chain
 from llm.recommend import QueryInfoExtractor, select_fit_resumes
-from preprocess import PDFLoader
+from preprocess.load_pdf import PDFLoader
+from preprocess.parse_pdf import PyPDFParser
 
 from schemas.request import ResumeRecommendRequest, ResumeExtractRequest
 from schemas.response import RecommendedResumeResponse, ResumeInfoResponse, InterviewQuestionResponse
@@ -18,15 +19,17 @@ load_dotenv()
 app = FastAPI()
 app.llm = llm
 app.pdf_loader = PDFLoader(storage_type="local")
+app.pdf_parser = PyPDFParser()
+app.content_extractor = ContentExtractor(section_chain)
 app.query_info_extractor = QueryInfoExtractor(llm=app.llm)
 app.vector_store = VectorStoreManager(persist_directory="db")
+
 
 ai_router = APIRouter(
     prefix="/api/ai",
     tags=["AI"],
     responses={404: {"description": "Not found"}, 422: {"description": "Unprocessable Entity"}},
 )
-
 
 @ai_router.post('/recommend',
                 summary="질문을 기반으로 적합한 이력서 추천",
@@ -62,7 +65,7 @@ def generate_questions(resume_id: str) -> list[InterviewQuestionResponse]:
 def process_resume(req: ResumeExtractRequest,  background_tasks: BackgroundTasks) -> ResumeInfoResponse:
     try:
         pdf_data = app.pdf_loader.load_pdf(req.file_path)
-        analyzed_data = pdf_to_documents(pdf_data)
+        analyzed_data = app.pdf_parser.parse_pdf(pdf_data)
         
         response = ResumeInfoResponse(
             resume_id=req.resume_id,
