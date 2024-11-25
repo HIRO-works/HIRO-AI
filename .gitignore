@@ -3,3 +3,5 @@ qna_log.csv
 __pycache__
 log-llm-3316e43cc23b.json
 resume_db
+**/*/__pycache__
+**/*/.DS_Store
