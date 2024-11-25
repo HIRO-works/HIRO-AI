@@ -9,7 +9,7 @@ from schemas.enums import JobCategory, YearsOfExperience, ProgrammingLanguage
 
 
 class VectorStoreManager:
-    def __init__(self, persist_directory: str = "chroma_wang/chroma.sqlite3"):
+    def __init__(self, persist_directory: str = "db/chroma.sqlite3"):
         load_dotenv()
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
         if not self.openai_api_key:
@@ -81,6 +81,31 @@ class VectorStoreManager:
         self.vector_store.add_documents([doc])
         self.vector_store.persist()
 
+    async def add_resume_async(
+        self,
+        content: str,
+        resume_id: UUID,
+        applicant_name: str,
+        job_category: JobCategory,
+        years: YearsOfExperience,
+        language: ProgrammingLanguage,
+        additional_metadata: Dict = None,
+    ):
+        """단일 이력서 추가"""
+        doc = self.create_resume_document(
+            content=content,
+            resume_id=resume_id,
+            applicant_name=applicant_name,
+            job_category=job_category,
+            years=years,
+            language=language,
+            additional_metadata=additional_metadata,
+        )
+
+        self.vector_store.add_documents([doc])
+        self.vector_store.persist()
+
+        
     def add_resumes(self, resumes: List[Dict]):
         """여러 이력서 일괄 추가"""
         docs = []
@@ -123,7 +148,7 @@ class VectorStoreManager:
 # 사용 예시
 if __name__ == "__main__":
     # 벡터 스토어 매니저 초기화
-    vector_store = VectorStoreManager(persist_directory="chroma_wang")
+    vector_store = VectorStoreManager(persist_directory="db")
 
     # 테스트 문서 추가
     # 단일 이력서 추가
