@@ -3,7 +3,7 @@ import os
 from io import BytesIO
 
 from PyPDF2 import PdfReader
-from langchain.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoader
 from langchain.schema import Document
 import boto3
 
