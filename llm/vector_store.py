@@ -9,13 +9,12 @@ from schemas.enums import JobCategory, YearsOfExperience, ProgrammingLanguage
 
 
 class VectorStoreManager:
-    def __init__(self, persist_directory: str = "db/chroma.sqlite3"):
+    def __init__(self, 
+                 embeddings, 
+                 persist_directory: str = "db/chroma.sqlite3"):
         load_dotenv()
-        self.openai_api_key = os.getenv("OPENAI_API_KEY")
-        if not self.openai_api_key:
-            raise ValueError("OPENAI_API_KEY not found")
 
-        self.embeddings = OpenAIEmbeddings(openai_api_key=self.openai_api_key)
+        self.embeddings = embeddings
         self.persist_directory = persist_directory
         self.vector_store = self._load_or_create_vector_store()
 

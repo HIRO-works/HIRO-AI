@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from uuid import UUID
 class ResumeRecommendRequest(BaseModel):
-    message_prompt: str
+    message: str
 
 class ResumeExtractRequest(BaseModel):
     user_id: str

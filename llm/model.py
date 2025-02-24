@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
+from langchain_community.llms import Ollama
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from llm.memory import get_session_history
 from dotenv import load_dotenv
@@ -28,12 +29,11 @@ prompt_template = ChatPromptTemplate.from_messages(
     ],
 )
 
-llm = ChatOpenAI(
+llm = Ollama(
+    model="mistral",  # 또는 "llama2", "codellama" 등
+    base_url="http://ollama:11434",
     temperature=0.1,
-    model="gpt-4o-mini",
-    callbacks=[],
 )
-
 
 chain_with_history = RunnableWithMessageHistory(
     prompt_template | llm,

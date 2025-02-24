@@ -8,7 +8,6 @@ from langchain.prompts import ChatPromptTemplate
 from preprocess.load_pdf import PDFLoader
 from schemas.response import ResumeInfoResponse
 from langchain.schema import Document
-from abc import ABC, abstractmethod
 
 load_dotenv()
 

@@ -3,103 +3,65 @@ from schemas.request import ResumeRecommendRequest
 from schemas.response import ResumeFilter
 
 from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
-from typing import Optional, Dict, Any
+from langchain.chains.openai_functions import create_structured_output_chain  # 변경된 import 경로
+from typing import Optional, Dict, Any, List
 from schemas.enums import QuestionType, JobCategory, YearsOfExperience, ProgrammingLanguage
-
 
 from dotenv import load_dotenv
 
 from langchain_openai import ChatOpenAI
-from schemas.enums import JobCategory, YearsOfExperience, ProgrammingLanguage
-
+from pydantic import BaseModel, Field
+from langchain.output_parsers import PydanticOutputParser
+from llm.result_filter import ResultFilter, NoFilter, RerankFilter, SearchResult
 load_dotenv()
-
-question_llm = ChatOpenAI(
-    temperature=0.1,
-    model="gpt-4o-mini",
-)
-
-
-question_llm_with_schema = question_llm.with_structured_output(ResumeFilter)
-
-vector_store = VectorStoreManager(persist_directory="db")
-
-
-# def filter_matching_resumes(req: ResumeRecommendRequest):
-    # filter = question_llm_with_schema.invoke(req.message)
-    # filter_metadata = {
-    #     key: value
-    #     for key, value in {
-    #         "applicant_name": (
-    #             f"{getattr(filter, 'applicant_name', None)}"
-    #             if getattr(filter, "applicant_name", None) is not None
-    #             else None
-    #         ),
-    #         "job_category": (
-    #             f"{getattr(filter, 'job_category', None)}"
-    #             if (getattr(filter, "job_category", None) is not None)
-    #             or (
-    #                 getattr(filter, "job_category", None)
-    #                 in [job.value for job in JobCategory]
-    #             )
-    #             else None
-    #         ),
-    #         "years": (
-    #             f"{getattr(filter, 'years', None)}"
-    #             if (getattr(filter, "years", None) is not None)
-    #             or (
-    #                 getattr(filter, "years", None)
-    #                 in [experience.value for experience in YearsOfExperience]
-    #             )
-    #             else None
-    #         ),
-    #         "language": (
-    #             f"{getattr(filter, 'language', None)}"
-    #             if (getattr(filter, "language", None) is not None)
-    #             or (
-    #                 getattr(filter, "language", None)
-    #                 in [language.value for language in ProgrammingLanguage]
-    #             )
-    #             else None
-    #         ),
-    #     }.items()
-    #     if value is not None
-    # }
-    # return [
-    #     doc.metadata
-    #     for doc in vector_store.search_resumes(
-    #         req.message,
-    #         k=5,
-    #         filter_metadata=filter_metadata,
-    #     )
-    # ]
 
 
 
 class QueryInfoExtractor:
-    def __init__(self, llm):
-        self.llm = llm
-        self.prompt = PromptTemplate(
-            input_variables=["message"],
-            template="""
-            다음 메시지에서 이력서 관련 정보를 추출해주세요:
-            {message}
-            
-            다음 형식으로 정확히 답변해주세요:
-            job_category: (BACKEND/FRONTEND/FULLSTACK/MOBILE/DATA/AI/DEVOPS 중 하나 또는 NONE)
-            years: (JUNIOR/MIDDLE/SENIOR 중 하나 또는 NONE)
-            language: (PYTHON/JAVA/JAVASCRIPT/KOTLIN/SWIFT/GO 중 하나 또는 NONE)
-            """
+    def __init__(self, llm, result_filter: ResultFilter = NoFilter()):
+        # 새로운 방식으로 구현
+        parser = PydanticOutputParser(pydantic_object=ResumeFilter)
+        
+        prompt = PromptTemplate(
+            template="Query: {query}\n{format_instructions}\n",
+            input_variables=["query"],
+            partial_variables={"format_instructions": parser.get_format_instructions()}
         )
-        self.chain = self.llm.bind(
-            prompt=self.prompt,
-        ).with_structured_output(ResumeFilter)
+        
+        self.chain = prompt | llm | parser
+        self.result_filter = result_filter
+
+    def select_fit_resumes(self, query: str, vector_store: VectorStoreManager) -> List[dict]:
+        response = self.chain.invoke({"query": query})
+        filter_metadata = self.extract(query)
+        
+        # 2. 초기 검색 (더 많은 후보)
+        initial_results = vector_store.search_resumes(
+            query, 
+            k=20,  # reranking을 위해 더 많은 후보 검색
+            filter_metadata=filter_metadata
+        )
+        
+        # 3. SearchResult 객체로 변환
+        search_results = [
+            SearchResult(
+                metadata=doc.metadata,
+                content=doc.page_content
+            )
+            for doc in initial_results
+        ]
+        
+        # 4. Reranking 수행
+        reranked_results = self.result_filter.filter(search_results)
+        
+        # 5. 메타데이터만 반환
+        return [result.metadata for result in reranked_results]
+    
 
     def extract(self, message: str) -> Dict[str, Optional[str]]:
         try:
             # LLM으로부터 응답 받기
-            response = self.chain.run(message=message)
+            response = self.chain.invoke(message)
             
             # 응답 파싱
             result = {}
@@ -124,10 +86,3 @@ class QueryInfoExtractor:
                 'years': None,
                 'language': None
             }
-
-def select_fit_resumes(req: ResumeRecommendRequest, 
-                       query_info_extractor: QueryInfoExtractor, 
-                       vector_store: VectorStoreManager):
-    filter_metadata = query_info_extractor.extract(req.message)
-    # req.message를 기반으로 적합한 이력서  0     
-    return [doc.metadata for doc in vector_store.search_resumes(req.message, k=5, filter_metadata=filter_metadata)]

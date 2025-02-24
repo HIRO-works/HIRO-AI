@@ -21,6 +21,8 @@ class ResumeInfoResponse(BaseModel):
     years: YearsOfExperience
     language: ProgrammingLanguage
 
+    
+
 
 class ResumeFilter(BaseModel):
     applicant_name: str | None

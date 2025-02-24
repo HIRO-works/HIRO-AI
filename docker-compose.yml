@@ -1,0 +1,27 @@
+version: '3.8'
+services:
+  app:
+    build: .
+    container_name: hiro
+    ports:
+      - "8000:8000"
+    networks:
+      - hiro_network
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - hiro_network
+
+networks:
+  hiro_network:
+    name: hiro_network
+
+volumes:
+  ollama_data:
